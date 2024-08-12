@@ -16,3 +16,4 @@ newsapi-python
 spacy
 nltk
 seaborn
+torch
