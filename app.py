@@ -47,12 +47,26 @@ def load_hopsworks_data():
     return sorted_df
 
 @st.cache_data
-def load_local_data():
+def load_local_data_for_forecast():
     start_date = date(2016, 1, 1)
     end_date = date.today() - timedelta(days=1)
     df = feature_engineering.prepare_data(start_date=start_date, end_date=end_date)
     df = prepare_data_for_forecast(df)
     return df
+
+@st.cache_data
+def load_local_data():
+    start_date = date(2016, 1, 1)
+    end_date = date.today() - timedelta(days=1)
+    df = feature_engineering.prepare_data(start_date=start_date, end_date=end_date)
+    sorted_df = df.sort_values(by='id')
+    sorted_df['date'] = pd.to_datetime(sorted_df['date'])
+    sorted_df['year'] = sorted_df['date'].dt.year
+    sorted_df['month'] = sorted_df['date'].dt.month
+    sorted_df['day'] = sorted_df['date'].dt.day
+    sorted_df['day_of_week'] = sorted_df['date'].dt.dayofweek
+    return sorted_df
+
 
 def calculate_investment_value(investment_amount, initial_price, final_price):
     """
@@ -171,12 +185,12 @@ def set_background(image_file):
 def main():
     set_background('images/background.jpg')
 
-    st.title('Bitcoin Price Prediction')
+    st.title('Bitcoin Price Movement Forecast')
 
     st.write("""
-        Welcome to our Bitcoin Price Prediction application. 
-        Here, you can explore various forecasts and visualizations related to Bitcoin prices. 
-        Use the investment calculator to predict the future value of your investments based on the provided data.
+        Welcome to our Bitcoin Trend Predictor! This app is designed to help you monitor and evaluate the performance of 
+        your Bitcoin investments with ease. Whether you're a trader, investor, or cryptocurrency enthusiast dive into 
+        our interactive app and make informed decisions in the fast-paced world of cryptocurrency. 
     """)
 
     # Load data from Hopsworks
@@ -184,7 +198,7 @@ def main():
 
     # TODO: Load data by downloading it instead of hopsworks later
     #  on change it to hopsworks again which is the commented line above
-    data = load_local_data()
+    data = load_local_data_for_forecast()
     lstm_model = load_model_from_disk('model/bitcoin_price_movement_prediction_lstm.pth')
 
     movement_interpretation = forecast(lstm_model, data, 100, 2)
@@ -193,7 +207,7 @@ def main():
     #forecast_df = load_csv_data('forecast_7_days.csv')
     #investment_forecast_df = load_csv_data('forecast_30_days.csv')
 
-    st.header('Bitcoin current portfolio calculator')
+    st.header('Bitcoin portfolio calculator')
 
     # Create a calendar selector
     selected_date = st.date_input("Select a date", value=None, min_value=datetime(2014, 10, 1), max_value=date.today())
@@ -254,6 +268,23 @@ def main():
                 st.subheader(f"Suggestion: It may be a good time to {suggestion}.")
             else:
                 st.write("Prediction data is not available.")
+
+    # plot visualization
+    forecast_df = load_csv_data('forecast_7_days.csv')
+    investment_forecast_df = load_csv_data('forecast_30_days.csv')
+    sorted_df = load_local_data()
+    st.header('Visualizations')
+    visualization_option = st.selectbox(
+        'Choose a visualization:',
+        ('Select an option',
+         'Bitcoin Price and USD Index',
+         'Bitcoin Price, Oil Price, and Gold Price',
+         'Boxplot of Bitcoin Closing Prices by Year')
+    )
+
+    if visualization_option != 'Select an option':
+        plot_visualization(visualization_option, sorted_df)
+
 
 
 
